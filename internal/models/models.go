@@ -10,7 +10,7 @@ import (
 type User struct {
 	ID           uuid.UUID      `gorm:"type:uuid;primaryKey" json:"id"`
 	Email        string         `gorm:"index;uniqueIndex" json:"email"`
-	PasswordHash string         `gorm:"-" json:"-"`
+	PasswordHash string         `json:"-"`
 	Name         string         `json:"name"`
 	AvatarURL    string         `json:"avatar_url"`
 	Bio          string         `json:"bio"`
