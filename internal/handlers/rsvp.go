@@ -7,8 +7,8 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 
-	"github.com/vikhandev/events-platform/internal/db"
-	"github.com/vikhandev/events-platform/internal/models"
+	"github.com/vikhanmuhammad/project-trainee/internal/db"
+	"github.com/vikhanmuhammad/project-trainee/internal/models"
 )
 
 type RSVPRequest struct {

@@ -7,10 +7,9 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
-	"gorm.io/gorm"
 
-	"github.com/vikhandev/events-platform/internal/db"
-	"github.com/vikhandev/events-platform/internal/models"
+	"github.com/vikhanmuhammad/project-trainee/internal/db"
+	"github.com/vikhanmuhammad/project-trainee/internal/models"
 )
 
 type CreateEventRequest struct {
@@ -27,18 +26,18 @@ type CreateEventRequest struct {
 }
 
 type EventResponse struct {
-	ID            string  `json:"id"`
-	Title         string  `json:"title"`
-	Description   string  `json:"description"`
-	Category      string  `json:"category"`
+	ID            string    `json:"id"`
+	Title         string    `json:"title"`
+	Description   string    `json:"description"`
+	Category      string    `json:"category"`
 	StartTime     time.Time `json:"start_time"`
-	LocationName  string  `json:"location_name"`
-	Latitude      float64 `json:"latitude"`
-	Longitude     float64 `json:"longitude"`
-	MaxCapacity   *int    `json:"max_capacity"`
-	ImageURL      string  `json:"image_url"`
-	CreatorID     string  `json:"creator_id"`
-	AttendeeCount int64   `json:"attendee_count"`
+	LocationName  string    `json:"location_name"`
+	Latitude      float64   `json:"latitude"`
+	Longitude     float64   `json:"longitude"`
+	MaxCapacity   *int      `json:"max_capacity"`
+	ImageURL      string    `json:"image_url"`
+	CreatorID     string    `json:"creator_id"`
+	AttendeeCount int64     `json:"attendee_count"`
 	CreatedAt     time.Time `json:"created_at"`
 }
 
@@ -91,17 +90,17 @@ func CreateEvent(c *gin.Context) {
 	db.DB.Create(&rsvp)
 
 	c.JSON(http.StatusCreated, EventResponse{
-		ID:           event.ID.String(),
-		Title:        event.Title,
-		Description:  event.Description,
-		Category:     event.Category,
-		StartTime:    event.StartTime,
-		LocationName: event.LocationName,
-		Latitude:     event.Latitude,
-		Longitude:    event.Longitude,
-		CreatorID:    event.CreatorID.String(),
+		ID:            event.ID.String(),
+		Title:         event.Title,
+		Description:   event.Description,
+		Category:      event.Category,
+		StartTime:     event.StartTime,
+		LocationName:  event.LocationName,
+		Latitude:      event.Latitude,
+		Longitude:     event.Longitude,
+		CreatorID:     event.CreatorID.String(),
 		AttendeeCount: 1,
-		CreatedAt:    event.CreatedAt,
+		CreatedAt:     event.CreatedAt,
 	})
 }
 
@@ -205,7 +204,7 @@ func GetEventDetail(c *gin.Context) {
 		StartTime:     event.StartTime,
 		LocationName:  event.LocationName,
 		Latitude:      event.Latitude,
-		Longitude:     event.Longitude(),
+		Longitude:     event.Longitude,
 		CreatorID:     event.CreatorID.String(),
 		AttendeeCount: attendeeCount,
 		CreatedAt:     event.CreatedAt,
