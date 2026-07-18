@@ -9,8 +9,8 @@ import (
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 
-	"github.com/vikhanmuhammad/project-trainee/internal/db"
-	"github.com/vikhanmuhammad/project-trainee/internal/models"
+	"github.com/vikhandev/events-platform/internal/db"
+	"github.com/vikhandev/events-platform/internal/models"
 )
 
 type CreateEventRequest struct {
@@ -24,6 +24,22 @@ type CreateEventRequest struct {
 	MaxCapacity  *int      `json:"max_capacity"`
 	ImageURL     string    `json:"image_url"`
 	Visibility   string    `json:"visibility"`
+}
+
+type EventResponse struct {
+	ID            string  `json:"id"`
+	Title         string  `json:"title"`
+	Description   string  `json:"description"`
+	Category      string  `json:"category"`
+	StartTime     time.Time `json:"start_time"`
+	LocationName  string  `json:"location_name"`
+	Latitude      float64 `json:"latitude"`
+	Longitude     float64 `json:"longitude"`
+	MaxCapacity   *int    `json:"max_capacity"`
+	ImageURL      string  `json:"image_url"`
+	CreatorID     string  `json:"creator_id"`
+	AttendeeCount int64   `json:"attendee_count"`
+	CreatedAt     time.Time `json:"created_at"`
 }
 
 // CreateEvent handler
@@ -64,7 +80,7 @@ func CreateEvent(c *gin.Context) {
 		return
 	}
 
-	// Auto-RSVP creator as GOING
+	// Auto-RSVP creator
 	rsvp := models.RSVP{
 		ID:        uuid.New(),
 		UserID:    userID,
@@ -74,10 +90,22 @@ func CreateEvent(c *gin.Context) {
 	}
 	db.DB.Create(&rsvp)
 
-	c.JSON(http.StatusCreated, event)
+	c.JSON(http.StatusCreated, EventResponse{
+		ID:           event.ID.String(),
+		Title:        event.Title,
+		Description:  event.Description,
+		Category:     event.Category,
+		StartTime:    event.StartTime,
+		LocationName: event.LocationName,
+		Latitude:     event.Latitude,
+		Longitude:    event.Longitude,
+		CreatorID:    event.CreatorID.String(),
+		AttendeeCount: 1,
+		CreatedAt:    event.CreatedAt,
+	})
 }
 
-// ListEvents handler with geolocation
+// ListEvents with geolocation
 func ListEvents(c *gin.Context) {
 	category := c.Query("category")
 	distance := c.DefaultQuery("distance", "25")
@@ -92,16 +120,18 @@ func ListEvents(c *gin.Context) {
 
 	query := db.DB
 
+	// Filter by category
 	if category != "" {
 		query = query.Where("category = ?", category)
 	}
 
-	// Geolocation query using PostGIS
+	// Geolocation filter using PostGIS
 	if latitude != "" && longitude != "" {
 		lat, _ := strconv.ParseFloat(latitude, 64)
 		lon, _ := strconv.ParseFloat(longitude, 64)
 		distanceMeters := distanceFloat * 1000
 
+		// PostGIS query - find events within distance
 		query = query.Where(
 			"ST_DistanceSphere(ST_Point(longitude, latitude), ST_Point(?, ?)) <= ?",
 			lon, lat, distanceMeters,
@@ -113,7 +143,6 @@ func ListEvents(c *gin.Context) {
 
 	var events []models.Event
 	if err := query.
-		Preload("Creator").
 		Order("start_time ASC").
 		Limit(limitInt).
 		Offset(offsetInt).
@@ -122,37 +151,68 @@ func ListEvents(c *gin.Context) {
 		return
 	}
 
+	// Convert to response
+	var eventResponses []EventResponse
+	for _, event := range events {
+		var attendeeCount int64
+		db.DB.Model(&models.RSVP{}).
+			Where("event_id = ? AND status = ?", event.ID, "GOING").
+			Count(&attendeeCount)
+
+		eventResponses = append(eventResponses, EventResponse{
+			ID:            event.ID.String(),
+			Title:         event.Title,
+			Description:   event.Description,
+			Category:      event.Category,
+			StartTime:     event.StartTime,
+			LocationName:  event.LocationName,
+			Latitude:      event.Latitude,
+			Longitude:     event.Longitude,
+			CreatorID:     event.CreatorID.String(),
+			AttendeeCount: attendeeCount,
+			CreatedAt:     event.CreatedAt,
+		})
+	}
+
 	c.JSON(http.StatusOK, gin.H{
-		"events": events,
+		"events": eventResponses,
 		"total":  total,
 		"limit":  limitInt,
 		"offset": offsetInt,
 	})
 }
 
-// GetEventDetail handler
+// GetEventDetail
 func GetEventDetail(c *gin.Context) {
 	eventID := c.Param("id")
 
 	var event models.Event
-	if err := db.DB.Preload("Creator").First(&event, "id = ?", eventID).Error; err != nil {
-		if err == gorm.ErrRecordNotFound {
-			c.JSON(http.StatusNotFound, gin.H{"error": "event not found"})
-		}
+	if err := db.DB.First(&event, "id = ?", eventID).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "event not found"})
 		return
 	}
 
-	// Count attendees
 	var attendeeCount int64
-	db.DB.Model(&models.RSVP{}).Where("event_id = ? AND status = ?", event.ID, "GOING").Count(&attendeeCount)
+	db.DB.Model(&models.RSVP{}).
+		Where("event_id = ? AND status = ?", event.ID, "GOING").
+		Count(&attendeeCount)
 
-	c.JSON(http.StatusOK, gin.H{
-		"event":          event,
-		"attendee_count": attendeeCount,
+	c.JSON(http.StatusOK, EventResponse{
+		ID:            event.ID.String(),
+		Title:         event.Title,
+		Description:   event.Description,
+		Category:      event.Category,
+		StartTime:     event.StartTime,
+		LocationName:  event.LocationName,
+		Latitude:      event.Latitude,
+		Longitude:     event.Longitude(),
+		CreatorID:     event.CreatorID.String(),
+		AttendeeCount: attendeeCount,
+		CreatedAt:     event.CreatedAt,
 	})
 }
 
-// UpdateEvent handler
+// UpdateEvent
 func UpdateEvent(c *gin.Context) {
 	userIDStr := c.GetString("userID")
 	userID, _ := uuid.Parse(userIDStr)
@@ -185,14 +245,14 @@ func UpdateEvent(c *gin.Context) {
 	event.UpdatedAt = time.Now()
 
 	if err := db.DB.Save(&event).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to update event"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to update"})
 		return
 	}
 
-	c.JSON(http.StatusOK, event)
+	c.JSON(http.StatusOK, gin.H{"message": "event updated"})
 }
 
-// DeleteEvent handler
+// DeleteEvent
 func DeleteEvent(c *gin.Context) {
 	userIDStr := c.GetString("userID")
 	userID, _ := uuid.Parse(userIDStr)
@@ -210,7 +270,7 @@ func DeleteEvent(c *gin.Context) {
 	}
 
 	if err := db.DB.Delete(&event).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to delete event"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to delete"})
 		return
 	}
 

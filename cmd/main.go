@@ -63,6 +63,11 @@ func main() {
 			events.PUT("/:id", middleware.AuthRequired(), handlers.UpdateEvent)
 			events.DELETE("/:id", middleware.AuthRequired(), handlers.DeleteEvent)
 		}
+
+		// RSVPs
+		// RSVP
+		events.GET("/:id/attendees", handlers.GetAttendees)
+		events.POST("/:id/rsvp", middleware.AuthRequired(), handlers.RSVPEvent)
 	}
 
 	// Health check
