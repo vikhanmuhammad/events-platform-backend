@@ -15,7 +15,7 @@ import (
 
 func main() {
 	// Load .env
-	if err := godotenv.Load("../.env"); err != nil {
+	if err := godotenv.Load(".env"); err != nil {
 		log.Println("No .env file found, using environment variables")
 	}
 
@@ -68,6 +68,11 @@ func main() {
 		// RSVP
 		events.GET("/:id/attendees", handlers.GetAttendees)
 		events.POST("/:id/rsvp", middleware.AuthRequired(), handlers.RSVPEvent)
+
+		// Comments
+		events.GET("/:id/comments", handlers.GetComments)
+		events.POST("/:id/comments", middleware.AuthRequired(), handlers.AddComment)
+		events.DELETE("/:id/comments/:commentId", middleware.AuthRequired(), handlers.DeleteComment)
 	}
 
 	// Health check
