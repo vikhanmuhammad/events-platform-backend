@@ -132,7 +132,7 @@ func ListEvents(c *gin.Context) {
 
 		// PostGIS query - find events within distance
 		query = query.Where(
-			"ST_DistanceSphere(ST_Point(longitude, latitude), ST_Point(?, ?)) <= ?",
+			"ST_DistanceSphere(ST_Point(longitude::double precision, latitude::double precision), ST_Point(?, ?)) <= ?",
 			lon, lat, distanceMeters,
 		)
 	}
