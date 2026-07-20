@@ -73,6 +73,15 @@ func main() {
 		events.GET("/:id/comments", handlers.GetComments)
 		events.POST("/:id/comments", middleware.AuthRequired(), handlers.AddComment)
 		events.DELETE("/:id/comments/:commentId", middleware.AuthRequired(), handlers.DeleteComment)
+
+		// Users
+		users := api.Group("/users")
+		{
+			users.GET("/:id", handlers.GetUserProfile)
+			users.PUT("/:id", middleware.AuthRequired(), handlers.UpdateUserProfile)
+			users.GET("/me/events", middleware.AuthRequired(), handlers.GetUserUpcomingEvents)
+			users.GET("/me/past-events", middleware.AuthRequired(), handlers.GetUserPastEvents)
+		}
 	}
 
 	// Health check
