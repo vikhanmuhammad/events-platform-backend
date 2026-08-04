@@ -51,8 +51,24 @@ func RSVPEvent(c *gin.Context) {
 	var rsvp models.RSVP
 	now := time.Now()
 
-	if err := db.DB.Where("event_id = ? AND user_id = ?", parsedEventID, userID).
-		First(&rsvp).Error; err != nil {
+	existingErr := db.DB.Where("event_id = ? AND user_id = ?", parsedEventID, userID).
+		First(&rsvp).Error
+	alreadyGoing := existingErr == nil && rsvp.Status == "GOING"
+
+	// Enforce capacity when the user is newly joining as GOING (switching
+	// status while already GOING doesn't add a new attendee, so it's exempt).
+	if req.Status == "GOING" && !alreadyGoing && event.MaxCapacity != nil {
+		var goingCount int64
+		db.DB.Model(&models.RSVP{}).
+			Where("event_id = ? AND status = ?", parsedEventID, "GOING").
+			Count(&goingCount)
+		if goingCount >= int64(*event.MaxCapacity) {
+			c.JSON(http.StatusConflict, gin.H{"error": "event is at full capacity"})
+			return
+		}
+	}
+
+	if existingErr != nil {
 		// Create new RSVP
 		rsvp = models.RSVP{
 			ID:          uuid.New(),

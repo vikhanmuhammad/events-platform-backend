@@ -31,9 +31,13 @@ func GetComments(c *gin.Context) {
 
 	var responses []map[string]interface{}
 	for _, comment := range comments {
+		userName := ""
+		if comment.User != nil {
+			userName = comment.User.Name
+		}
 		responses = append(responses, map[string]interface{}{
 			"id":      comment.ID.String(),
-			"user":    comment.User.Name,
+			"user":    userName,
 			"content": comment.Content,
 			"created": comment.CreatedAt,
 		})
@@ -48,7 +52,17 @@ func AddComment(c *gin.Context) {
 	userID, _ := uuid.Parse(userIDStr)
 
 	eventID := c.Param("id")
-	parsedEventID, _ := uuid.Parse(eventID)
+	parsedEventID, err := uuid.Parse(eventID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid event id"})
+		return
+	}
+
+	var event models.Event
+	if err := db.DB.First(&event, "id = ?", parsedEventID).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "event not found"})
+		return
+	}
 
 	var req CreateCommentRequest
 	if err := c.ShouldBindJSON(&req); err != nil {

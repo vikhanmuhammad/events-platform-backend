@@ -33,13 +33,18 @@ func main() {
 	// Initialize router
 	router := gin.Default()
 
-	// CORS middleware
+	// CORS middleware. Auth uses a Bearer token (not cookies), so credentials
+	// don't need to be allowed - that lets us safely allow any origin, which
+	// covers the web dev server (whatever port Vite picks) plus mobile/native
+	// clients that don't send an Origin header at all. (Mixing a wildcard
+	// origin with AllowCredentials:true, as before, is invalid per the CORS
+	// spec and browsers reject it outright.)
 	router.Use(cors.New(cors.Config{
-		AllowOrigins:     []string{os.Getenv("FRONTEND_URL"), "*"},
+		AllowOrigins:     []string{"*"},
 		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
 		AllowHeaders:     []string{"Content-Type", "Authorization"},
 		ExposeHeaders:    []string{"Content-Length"},
-		AllowCredentials: true,
+		AllowCredentials: false,
 		MaxAge:           12 * 3600,
 	}))
 

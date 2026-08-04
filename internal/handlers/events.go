@@ -106,16 +106,32 @@ func CreateEvent(c *gin.Context) {
 
 // ListEvents with geolocation
 func ListEvents(c *gin.Context) {
+	const maxLimit = 100
+	const defaultLimit = 10
+
 	category := c.Query("category")
 	distance := c.DefaultQuery("distance", "25")
 	latitude := c.Query("latitude")
 	longitude := c.Query("longitude")
-	limit := c.DefaultQuery("limit", "10")
+	limit := c.DefaultQuery("limit", strconv.Itoa(defaultLimit))
 	offset := c.DefaultQuery("offset", "0")
 
-	limitInt, _ := strconv.Atoi(limit)
-	offsetInt, _ := strconv.Atoi(offset)
-	distanceFloat, _ := strconv.ParseFloat(distance, 64)
+	limitInt, err := strconv.Atoi(limit)
+	if err != nil || limitInt <= 0 {
+		limitInt = defaultLimit
+	} else if limitInt > maxLimit {
+		limitInt = maxLimit
+	}
+
+	offsetInt, err := strconv.Atoi(offset)
+	if err != nil || offsetInt < 0 {
+		offsetInt = 0
+	}
+
+	distanceFloat, err := strconv.ParseFloat(distance, 64)
+	if err != nil || distanceFloat <= 0 {
+		distanceFloat = 25
+	}
 
 	query := db.DB
 
@@ -126,8 +142,12 @@ func ListEvents(c *gin.Context) {
 
 	// Geolocation filter using PostGIS
 	if latitude != "" && longitude != "" {
-		lat, _ := strconv.ParseFloat(latitude, 64)
-		lon, _ := strconv.ParseFloat(longitude, 64)
+		lat, latErr := strconv.ParseFloat(latitude, 64)
+		lon, lonErr := strconv.ParseFloat(longitude, 64)
+		if latErr != nil || lonErr != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid latitude or longitude"})
+			return
+		}
 		distanceMeters := distanceFloat * 1000
 
 		// PostGIS query - find events within distance
@@ -241,6 +261,9 @@ func UpdateEvent(c *gin.Context) {
 	event.LocationName = req.LocationName
 	event.Latitude = req.Latitude
 	event.Longitude = req.Longitude
+	event.MaxCapacity = req.MaxCapacity
+	event.ImageURL = req.ImageURL
+	event.Visibility = req.Visibility
 	event.UpdatedAt = time.Now()
 
 	if err := db.DB.Save(&event).Error; err != nil {
